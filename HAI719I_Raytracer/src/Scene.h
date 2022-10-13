@@ -11,6 +11,12 @@
 #include <GL/glut.h>
 
 
+enum ObjectType{
+    ObjectType_Sphere,
+    ObjectType_Square,
+    ObjectType_Mesh
+};
+
 enum LightType {
     LightType_Spherical,
     LightType_Quad
@@ -80,6 +86,35 @@ public:
     RaySceneIntersection computeIntersection(Ray const & ray) {
         RaySceneIntersection result;
         //TODO calculer les intersections avec les objets de la scene et garder la plus proche
+        float t = FLT_MAX;
+        for(size_t i = 0; i<spheres.size(); i++)
+        {
+            RaySphereIntersection intersection = spheres[i].intersect(ray);
+            if(intersection.intersectionExists && intersection.t < t)
+            {
+                t = intersection.t;
+                result.intersectionExists = true;
+                result.typeOfIntersectedObject = ObjectType_Sphere;
+                result.objectIndex = i;
+                result.t = t;
+                result.raySphereIntersection = intersection;
+
+            }
+        }
+        for(size_t i = 0; i<squares.size(); i++)
+        {
+            RaySquareIntersection intersection = squares[i].intersect(ray);
+            if(intersection.intersectionExists && intersection.t < t)
+            {
+                t = intersection.t;
+                result.intersectionExists = true;
+                result.typeOfIntersectedObject = ObjectType_Square;
+                result.objectIndex = i;
+                result.t = t;
+                result.raySquareIntersection = intersection;
+
+            }
+        }
         return result;
     }
 
@@ -89,15 +124,30 @@ public:
 
     Vec3 rayTraceRecursive( Ray ray , int NRemainingBounces ) {
 
-        //TODO RaySceneIntersection raySceneIntersection = computeIntersection(ray);
+        RaySceneIntersection raySceneIntersection = computeIntersection(ray);
         Vec3 color;
+        if(raySceneIntersection.intersectionExists)
+        {
+            switch(raySceneIntersection.typeOfIntersectedObject)
+            {
+                case ObjectType_Sphere:
+                    color = spheres[raySceneIntersection.objectIndex].material.diffuse_material;
+                    break;
+                case ObjectType_Square:
+                    color = squares[raySceneIntersection.objectIndex].material.diffuse_material;
+                    break;
+                default:
+                    break;
+            }
+        }
         return color;
     }
 
 
     Vec3 rayTrace( Ray const & rayStart ) {
-        //TODO appeler la fonction recursive
+        
         Vec3 color;
+        color = rayTraceRecursive(rayStart, 1);
         return color;
     }
 

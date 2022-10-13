@@ -83,9 +83,32 @@ public:
 
 
     RaySphereIntersection intersect(const Ray &ray) const {
-        RaySphereIntersection intersection;
+        RaySphereIntersection rayinter;
         //TODO calcul l'intersection rayon sphere
-        return intersection;
+        double a = pow(ray.direction()[0], 2) + pow(ray.direction()[1], 2) + pow(ray.direction()[2], 2);
+        double b = 2 * (ray.direction()[0] * ray.origin()[0] + ray.direction()[1] * ray.origin()[1] + ray.direction()[2] * ray.origin()[2] );
+        double c = pow(ray.origin()[0], 2) + pow(ray.origin()[1], 2) + pow(ray.origin()[2], 2) - pow(m_radius, 2);
+        double disc = pow(b,2) - 4*a*c;
+        if(disc < 0) 
+        {
+        	rayinter.intersectionExists = false;
+        	return rayinter;
+        }
+        double t1 = (b*(-1) - sqrt(disc))/(2*a);
+        double t2 = (b*(-1) + sqrt(disc))/(2*a);
+        rayinter.intersectionExists = true;
+        if(t1>0 && (t1<t2 || t2<0))
+        {
+        	rayinter.t = t1;
+            rayinter.intersection = ray.direction() * t1 + ray.origin();
+        }
+        else{
+            rayinter.t = t2;
+            rayinter.intersection = ray.direction() * t1 + ray.origin();
+        }
+        //std::cout<<rayinter.t<<std::endl;
+        
+        return rayinter;
     }
 };
 #endif

@@ -62,10 +62,25 @@ public:
 
     RaySquareIntersection intersect(const Ray &ray) const {
         RaySquareIntersection intersection;
-
+        float D = Vec3::dot(m_bottom_left, m_normal);
+        float t = (D - Vec3::dot(ray.origin(), m_normal))/Vec3::dot(ray.direction(), m_normal);
+        if(  t>0               &&
+            (t>uMin && t<uMax) &&
+            (t>vMin && t<vMax))
+        {
+            intersection.intersectionExists = true;
+            intersection.t = t;
+            intersection.intersection = ray.direction() * t + ray.origin();
+            return intersection;
+        }
+        else
+        {
+            intersection.intersectionExists = false;
+            return intersection;
+        }
         //TODO calculer l'intersection rayon quad
 
-        return intersection;
+        
     }
 };
 #endif // SQUARE_H

@@ -174,6 +174,10 @@ void ray_trace_from_camera() {
     //    unsigned int nsamples = 100;
     unsigned int nsamples = 50;
     std::vector< Vec3 > image( w*h , Vec3(0,0,0) );
+    // float u = 0.5; float v = 0.5;
+    // screen_space_to_world_space_ray(u,v,pos,dir);
+    // Vec3 color = scenes[selected_scene].rayTrace( Ray(pos , dir) );
+    // image[w/2 + (h/2)*w] += color;
     for (int y=0; y<h; y++){
         for (int x=0; x<w; x++) {
             for( unsigned int s = 0 ; s < nsamples ; ++s ) {
