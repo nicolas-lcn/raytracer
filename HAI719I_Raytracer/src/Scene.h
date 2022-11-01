@@ -98,7 +98,6 @@ public:
                 result.objectIndex = i;
                 result.t = t;
                 result.raySphereIntersection = intersection;
-
             }
         }
         for(size_t i = 0; i<squares.size(); i++)
@@ -334,6 +333,47 @@ public:
             s.material.index_medium = 0.;
         }
 
+    }
+
+    void setup_two_spheres()
+    {
+        meshes.clear();
+        spheres.clear();
+        squares.clear();
+        lights.clear();
+
+        {
+            lights.resize( lights.size() + 1 );
+            Light & light = lights[lights.size() - 1];
+            light.pos = Vec3(-5,5,5);
+            light.radius = 2.5f;
+            light.powerCorrection = 2.f;
+            light.type = LightType_Spherical;
+            light.material = Vec3(1,1,1);
+            light.isInCamSpace = false;
+        }
+        {
+            spheres.resize( spheres.size() + 1 );
+            Sphere & s = spheres[spheres.size() - 1];
+            s.m_center = Vec3(1. , 0. , 0.);
+            s.m_radius = 1.f;
+            s.build_arrays();
+            s.material.type = Material_Mirror;
+            s.material.diffuse_material = Vec3( 1.,0.,0. );
+            s.material.specular_material = Vec3( 0.2,0.2,0.2 );
+            s.material.shininess = 20;
+        }
+        {
+            spheres.resize( spheres.size() + 1 );
+            Sphere & s = spheres[spheres.size() - 1];
+            s.m_center = Vec3(-1. , 0. , 0.);
+            s.m_radius = 1.f;
+            s.build_arrays();
+            s.material.type = Material_Mirror;
+            s.material.diffuse_material = Vec3( 0.,1.,0.);
+            s.material.specular_material = Vec3( 0.2,0.2,0.2 );
+            s.material.shininess = 20;
+        }
     }
 
 };

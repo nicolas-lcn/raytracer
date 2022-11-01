@@ -84,12 +84,12 @@ public:
 
     RaySphereIntersection intersect(const Ray &ray) const {
         RaySphereIntersection rayinter;
-        //TODO calcul l'intersection rayon sphere
-        double a = pow(ray.direction()[0], 2) + pow(ray.direction()[1], 2) + pow(ray.direction()[2], 2);
-        double b = 2 * (ray.direction()[0] * ray.origin()[0] + ray.direction()[1] * ray.origin()[1] + ray.direction()[2] * ray.origin()[2] );
-        double c = pow(ray.origin()[0], 2) + pow(ray.origin()[1], 2) + pow(ray.origin()[2], 2) - pow(m_radius, 2);
+        Vec3 CO = ray.origin() - m_center;
+        double a = Vec3::dot(ray.direction(), ray.direction());
+        double b = 2 * Vec3::dot(ray.direction(), CO);
+        double c = pow(CO.length(), 2) - pow(m_radius, 2);
         double disc = pow(b,2) - 4*a*c;
-        if(disc < 0) 
+        if(disc < 0 || (2*a) == 0) 
         {
         	rayinter.intersectionExists = false;
         	return rayinter;

@@ -27,6 +27,12 @@ public:
         setQuad(bottomLeft, rightVector, upVector, width, height, uMin, uMax, vMin, vMax);
     }
 
+    Vec3 bottomLeft() const { return this->vertices[0].position; }
+    Vec3 bottomRight() const { return this->vertices[1].position; }
+    Vec3 upRight() const { return this->vertices[2].position; }
+    Vec3 upLeft() const { return this->vertices[3].position; }
+    Vec3 normal() const { return Vec3::cross((bottomRight() - bottomLeft()) , (upLeft() - bottomLeft())); }
+
     void setQuad( Vec3 const & bottomLeft , Vec3 const & rightVector , Vec3 const & upVector , float width=1. , float height=1. ,
                   float uMin = 0.f , float uMax = 1.f , float vMin = 0.f , float vMax = 1.f) {
         m_right_vector = rightVector;
@@ -62,15 +68,17 @@ public:
 
     RaySquareIntersection intersect(const Ray &ray) const {
         RaySquareIntersection intersection;
-        float D = Vec3::dot(m_bottom_left, m_normal);
-        float t = (D - Vec3::dot(ray.origin(), m_normal))/Vec3::dot(ray.direction(), m_normal);
-        if(  t>0               &&
-            (t>uMin && t<uMax) &&
-            (t>vMin && t<vMax))
+        float D = Vec3::dot(bottomLeft(), normal());
+        float t = (D - Vec3::dot(ray.origin(), normal()))/Vec3::dot(ray.direction(), normal());
+        Vec3 point = ray.direction() * t + ray.origin();
+        if( point[0]>=bottomLeft()[0]
+         && point[0]<=upRight()[0]
+         && point[1]>=bottomLeft()[1]
+         && point[1]<=upRight()[1])
         {
             intersection.intersectionExists = true;
             intersection.t = t;
-            intersection.intersection = ray.direction() * t + ray.origin();
+            intersection.intersection = point;
             return intersection;
         }
         else
@@ -78,7 +86,7 @@ public:
             intersection.intersectionExists = false;
             return intersection;
         }
-        //TODO calculer l'intersection rayon quad
+        
 
         
     }
