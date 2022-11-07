@@ -90,7 +90,7 @@ public:
         for(size_t i = 0; i<spheres.size(); i++)
         {
             RaySphereIntersection intersection = spheres[i].intersect(ray);
-            if(intersection.intersectionExists && intersection.t < t)
+            if(intersection.intersectionExists && intersection.t < t && intersection.t > 4.9f)
             {
                 t = intersection.t;
                 result.intersectionExists = true;
@@ -103,7 +103,7 @@ public:
         for(size_t i = 0; i<squares.size(); i++)
         {
             RaySquareIntersection intersection = squares[i].intersect(ray);
-            if(intersection.intersectionExists && intersection.t < t)
+            if(intersection.intersectionExists && intersection.t < t && intersection.t > 4.9f)
             {
                 t = intersection.t;
                 result.intersectionExists = true;
@@ -231,7 +231,7 @@ public:
             s.scale(Vec3(2., 2., 1.));
             s.translate(Vec3(0., 0., -2.));
             s.build_arrays();
-            s.material.diffuse_material = Vec3( 1.,1.,1. );
+            s.material.diffuse_material = Vec3( 0.5,0.,0.7 );
             s.material.specular_material = Vec3( 1.,1.,1. );
             s.material.shininess = 16;
         }
@@ -271,7 +271,7 @@ public:
             s.scale(Vec3(2., 2., 1.));
             s.rotate_x(-90);
             s.build_arrays();
-            s.material.diffuse_material = Vec3( 1.0,1.0,1.0 );
+            s.material.diffuse_material = Vec3( 1.0,1.0,0.0 );
             s.material.specular_material = Vec3( 1.0,1.0,1.0 );
             s.material.shininess = 16;
         }
@@ -284,7 +284,7 @@ public:
             s.scale(Vec3(2., 2., 1.));
             s.rotate_x(90);
             s.build_arrays();
-            s.material.diffuse_material = Vec3( 1.0,1.0,1.0 );
+            s.material.diffuse_material = Vec3( 0.7,0.7,0.7 );
             s.material.specular_material = Vec3( 1.0,1.0,1.0 );
             s.material.shininess = 16;
         }
@@ -326,7 +326,7 @@ public:
             s.m_radius = 0.75f;
             s.build_arrays();
             s.material.type = Material_Glass;
-            s.material.diffuse_material = Vec3( 1.,1.,1. );
+            s.material.diffuse_material = Vec3( 0.,1.,0. );
             s.material.specular_material = Vec3(  1.,1.,1. );
             s.material.shininess = 16;
             s.material.transparency = 0.;

@@ -69,12 +69,15 @@ public:
     RaySquareIntersection intersect(const Ray &ray) const {
         RaySquareIntersection intersection;
         float D = Vec3::dot(bottomLeft(), normal());
-        float t = (D - Vec3::dot(ray.origin(), normal()))/Vec3::dot(ray.direction(), normal());
+        float t = ( D - Vec3::dot(ray.origin(), normal()))/Vec3::dot(ray.direction(), normal());
         Vec3 point = ray.direction() * t + ray.origin();
-        if( point[0]>=bottomLeft()[0]
-         && point[0]<=upRight()[0]
-         && point[1]>=bottomLeft()[1]
-         && point[1]<=upRight()[1])
+        Vec3 vecToBottom = point - bottomLeft();
+        Vec3 X_axis = (bottomRight() - bottomLeft());
+        Vec3 Y_axis = (upLeft() - bottomLeft());
+        float u = Vec3::dot(vecToBottom, X_axis);
+        float v = Vec3::dot(vecToBottom, Y_axis);
+        if(    u > 0 && u < Vec3::dot(X_axis, X_axis)
+            && v > 0 && v < Vec3::dot(Y_axis, Y_axis))
         {
             intersection.intersectionExists = true;
             intersection.t = t;
