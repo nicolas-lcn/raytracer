@@ -82,6 +82,7 @@ public:
             intersection.intersectionExists = true;
             intersection.t = t;
             intersection.intersection = point;
+            intersection.normal = normal();
             return intersection;
         }
         else

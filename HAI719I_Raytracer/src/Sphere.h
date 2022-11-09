@@ -96,15 +96,25 @@ public:
         }
         double t1 = (b*(-1) - sqrt(disc))/(2*a);
         double t2 = (b*(-1) + sqrt(disc))/(2*a);
-        rayinter.intersectionExists = true;
         if(t1>0 && (t1<t2 || t2<0))
         {
+            rayinter.intersectionExists = true;
         	rayinter.t = t1;
-            rayinter.intersection = ray.direction() * t1 + ray.origin();
+            Vec3 point = ray.direction() * t1 + ray.origin();
+            rayinter.intersection = point;
+            Vec3 normal = point - m_center;
+            normal.normalize();
+            rayinter.normal = normal;
+
         }
         else{
+            rayinter.intersectionExists = true;
             rayinter.t = t2;
-            rayinter.intersection = ray.direction() * t1 + ray.origin();
+            Vec3 point = ray.direction() * t2 + ray.origin();
+            rayinter.intersection = point;
+            Vec3 normal = point - m_center;
+            normal.normalize();
+            rayinter.normal = normal;
         }
         //std::cout<<rayinter.t<<std::endl;
         
