@@ -10,6 +10,8 @@
 
 #include <GL/glut.h>
 
+#define LIGHT_SAMPLES 10.0f
+
 
 enum ObjectType{
     ObjectType_Sphere,
@@ -29,9 +31,8 @@ struct Light {
     LightType type;
 
     Vec3 pos;
+    Vec3 direction;
     float radius;
-
-    Mesh quad;
 
     float powerCorrection;
 
@@ -135,6 +136,9 @@ public:
     		if(intersection.intersectionExists && intersection.t > 0.001f && intersection.t < maxDist)
     		{
     			result.intersectionExists = true;
+    			result.typeOfIntersectedObject = ObjectType_Square;
+                result.objectIndex = i;
+                result.raySquareIntersection = intersection;
     			return result;
     		}
     	}
@@ -143,103 +147,158 @@ public:
     }
 
 
-    Vec3 phong_sphere (Ray ray, Light light, RaySphereIntersection intersection, int index)
+    Vec3 computePhongIllumination(
+        Ray ray, 
+        Light light, 
+        Vec3 normal,
+        Vec3 intersection,
+        Vec3 ambient_material,
+        Vec3 diffuse_material,
+        Vec3 specular_material,
+        double shininess)
     {
-
-		Vec3 L = light.pos - intersection.intersection;
+        Vec3 L = light.pos - intersection;
         L.normalize();
-        Vec3 normal = intersection.normal;
-        Vec3 reflexion = 2 * (Vec3::dot(normal, L)) * normal - L;
+        Vec3 reflexion = 2 * (Vec3::dot(L, normal)) * normal - L;
         reflexion.normalize();
-        Vec3 rayDir = (-1) * ray.direction();
+        Vec3 rayDir = ray.origin() - intersection;
         rayDir.normalize();
+        float alpha = std::max(Vec3::dot(reflexion, rayDir), 0.f);
+        float theta = std::max(Vec3::dot(L,normal), 0.f);
+        Vec3 ambient = Vec3::compProduct(light.material, ambient_material);
         Vec3 specular = Vec3::compProduct(
-        				light.material, 
-        				spheres[index].material.specular_material) * 
-        				pow(Vec3::dot(reflexion, rayDir), spheres[index].material.shininess);
+                        light.material, 
+                        specular_material) * 
+                        pow(alpha, shininess);
         Vec3 diffuse=Vec3::compProduct(
-        				light.material,
-        				spheres[index].material.diffuse_material)*
-        			 Vec3::dot(L,normal);
+                        light.material,
+                        diffuse_material)*theta;
         
-        return specular + diffuse;
-	
+        return ambient + specular + diffuse;
     }
 
-    Vec3 phong_square(Ray ray, Light light, RaySquareIntersection intersection, int index)
+    Vec3 computeHardShadow(Ray ray, Light light, Vec3 normal,
+        Vec3 intersection,
+        Vec3 ambient_material,
+        Vec3 diffuse_material,
+        Vec3 specular_material,
+        double shininess)
     {
-    	Vec3 L = light.pos - intersection.intersection;
+        Vec3 L = light.pos - intersection;
+        float shadowMinDist = L.length();
         L.normalize();
-        Vec3 normal = intersection.normal;
-        Vec3 reflexion = 2 * (Vec3::dot(normal, L)) * normal - L;
-        reflexion.normalize();
-        Vec3 rayDir = (-1) * ray.direction();
-        rayDir.normalize();
-        Vec3 specular = Vec3::compProduct(light.material, 
-        								  squares[index].material.specular_material) * 
-        								  pow(Vec3::dot(reflexion, rayDir), 
-        								  	  squares[index].material.shininess);
-        Vec3 diffuse =  Vec3::compProduct(light.material,
-        								  squares[index].material.diffuse_material)  *
-        								  Vec3::dot(L,normal);
-
-        return diffuse + specular;
+        Ray shadowRay = Ray(intersection, L);
+        RaySceneIntersection shadowIntersection = computeShadowIntersection(shadowRay, shadowMinDist);
+        if(shadowIntersection.intersectionExists) 
+            return Vec3(0,0,0);
+        else 
+            return computePhongIllumination(ray, light, normal, intersection, ambient_material, diffuse_material, specular_material, shininess);
+                
     }
+
+    float computeSoftShadow(Light light, Vec3 intersection)
+    {
+
+        float counter = 0;
+        for(float k = 0; k<LIGHT_SAMPLES; k++)
+        {
+        	float x =(float)(rand()/(float)(RAND_MAX / (light.radius)));
+            float y =(float)(rand()/(float)(RAND_MAX / (light.radius)));
+        	float z =(float)(rand()/(float)(RAND_MAX / (light.radius)));
+            Vec3 pos = Vec3(light.pos[0] + x, light.pos[1] + y, light.pos[2] + z);
+
+			Vec3 L = pos - intersection;
+			L.normalize();
+			Ray shadowRay = Ray(intersection, L);
+			RaySceneIntersection shadowIntersection = computeShadowIntersection(shadowRay, 0.9f);
+			if(shadowIntersection.intersectionExists) counter++;
+			
+		}
+		return counter;
+    }
+
 
     Vec3 rayTraceRecursive( Ray ray , int NRemainingBounces) {
 
         RaySceneIntersection raySceneIntersection = computeIntersection(ray, 4.9f);
         Vec3 color;
-        int light_number = 0;
         if(raySceneIntersection.intersectionExists)
         {
-        	
             if(raySceneIntersection.typeOfIntersectedObject == ObjectType_Sphere)
             {
+            	float intersected = 0;
             	for (int i = 0; i < lights.size(); ++i)
             	{
-            		Vec3 L = lights[i].pos - raySceneIntersection.raySphereIntersection.intersection;
-            		float shadowMinDist = L.length();
-            		L.normalize();
-            		Ray shadowRay = Ray(raySceneIntersection.raySphereIntersection.intersection, L);
-            		RaySceneIntersection shadowIntersection = computeShadowIntersection(shadowRay, shadowMinDist);
-            		if(shadowIntersection.intersectionExists)
-        			{
-        				return Vec3(0,0,0);
-        			}
-                    else 
-                    {
-                    	color += phong_sphere(ray, lights[i], raySceneIntersection.raySphereIntersection, raySceneIntersection.objectIndex);
-                    	
-                    }
+                    
+                    // if(lights[i].type = LightType_Quad)
+                    // {
+                    	color = computePhongIllumination(ray, 
+                                      lights[i], 
+                                      raySceneIntersection.raySphereIntersection.normal, 
+                                      raySceneIntersection.raySphereIntersection.intersection,
+                                      spheres[raySceneIntersection.objectIndex].material.ambient_material,
+                                      spheres[raySceneIntersection.objectIndex].material.diffuse_material,
+                                      spheres[raySceneIntersection.objectIndex].material.specular_material,
+                                      spheres[raySceneIntersection.objectIndex].material.shininess
+                                     );
+                    	intersected += computeSoftShadow(lights[i], raySceneIntersection.raySphereIntersection.intersection);
+                        intersected /= LIGHT_SAMPLES;
+                    //}
+                    	//else
+                    // {
+	                    // color += computeHardShadow(ray, 
+	                    //                   lights[i], 
+	                    //                   raySceneIntersection.raySphereIntersection.normal, 
+	                    //                   raySceneIntersection.raySphereIntersection.intersection,
+	                    //                   spheres[raySceneIntersection.objectIndex].material.diffuse_material,
+	                    //                   spheres[raySceneIntersection.objectIndex].material.specular_material,
+	                    //                   spheres[raySceneIntersection.objectIndex].material.shininess
+	                    //                  );
+                    // }
+                        float shadow = 1.f - intersected;
+                        color *= shadow;
             	}
+
             }
             else if(raySceneIntersection.typeOfIntersectedObject == ObjectType_Square)
             {
-
+            	float intersected = 0;
+            	
             	for (int i = 0; i < lights.size(); ++i)
             	{
-            		{
-	            		Vec3 L = lights[i].pos - raySceneIntersection.raySquareIntersection.intersection;
-	            		float shadowMinDist = L.length();
-	            		L.normalize();
-	            		Ray shadowRay = Ray(raySceneIntersection.raySquareIntersection.intersection, L);
-	            		RaySceneIntersection shadowIntersection = computeShadowIntersection(shadowRay, shadowMinDist);
-	            		
-	                    if(shadowIntersection.intersectionExists)
-	                	{
-	                		return Vec3(0,0,0);
-	                	}
-	                    else 
-	                    {
-	                    	color += phong_square(ray, lights[i], raySceneIntersection.raySquareIntersection, raySceneIntersection.objectIndex);
-	                    	
-	                    }
-                	}
+                   	
+                    // if(lights[i].type == LightType_Quad)
+                    // {
+                    	color = computePhongIllumination(ray, 
+                                      lights[i], 
+                                      raySceneIntersection.raySquareIntersection.normal, 
+                                      raySceneIntersection.raySquareIntersection.intersection,
+                                      squares[raySceneIntersection.objectIndex].material.ambient_material,
+                                      squares[raySceneIntersection.objectIndex].material.diffuse_material,
+                                      squares[raySceneIntersection.objectIndex].material.specular_material,
+                                      squares[raySceneIntersection.objectIndex].material.shininess);
+                    	intersected += computeSoftShadow(lights[i], raySceneIntersection.raySquareIntersection.intersection);
+                        intersected /= LIGHT_SAMPLES;
+                    //}
+                    //else
+                    // {
+	                    // color += computeHardShadow(ray, 
+	                    //                   lights[i], 
+	                    //                   raySceneIntersection.raySquareIntersection.normal, 
+	                    //                   raySceneIntersection.raySquareIntersection.intersection,
+	                    //                   squares[raySceneIntersection.objectIndex].material.diffuse_material,
+	                    //                   squares[raySceneIntersection.objectIndex].material.specular_material,
+	                    //                   squares[raySceneIntersection.objectIndex].material.shininess
+	                    //                  );
+                    // }
+                        float shadow = 1.f - intersected;
+                        color *= shadow;
             	}
+            	
             }
+            return color;
         }
-        return color;
+        //return Vec3(0,0,0);
     }
 
 
@@ -316,7 +375,8 @@ public:
         {
             lights.resize( lights.size() + 1 );
             Light & light = lights[lights.size() - 1];
-            light.pos = Vec3( 0.0, 1.97, 0.0 );
+            light.pos = Vec3( 0.0, 1.5, 0.0 );
+            light.direction = Vec3(0.0, -1.0, 0.0);
             light.radius = 2.5f;
             light.powerCorrection = 2.f;
             light.type = LightType_Spherical;

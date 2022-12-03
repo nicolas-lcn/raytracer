@@ -65,24 +65,44 @@ public:
 
 
     }
+    bool isInSquare(Vec3 pos, Vec3 normal) const
+    {
+        Vec3 vecToBotLeft = pos - bottomLeft();
+        Vec3 vecToBotRight = pos - bottomRight();
+        Vec3 vecToUpLeft = pos - upLeft();
+        Vec3 vecToUpRight = pos - upRight();
+
+        Vec3 bottom = Vec3::cross(bottomRight() - bottomLeft(), pos - bottomLeft());
+        Vec3 right = Vec3::cross(upRight() - bottomRight(), pos - bottomRight());
+        Vec3 up = Vec3::cross(upLeft() - upRight(), pos - upRight());
+        Vec3 left = Vec3::cross(bottomLeft() - upLeft(), pos - upLeft());
+
+        float alpha_bot_norm = Vec3::dot(bottom, normal);
+        float alpha_right_norm = Vec3::dot(right, normal);
+        float alpha_left_norm = Vec3::dot(left, normal);
+        float alpha_up_norm = Vec3::dot(up, normal);
+
+        bool direction = (Vec3::dot(bottom, normal) > 0);
+
+        bool sameDirection = (Vec3::dot(right, normal) > 0) == direction && 
+                             (Vec3::dot(left, normal)  > 0) == direction &&
+                             (Vec3::dot(up, normal)    > 0) == direction;
+        return sameDirection;
+    }
 
     RaySquareIntersection intersect(const Ray &ray) const {
         RaySquareIntersection intersection;
         float D = Vec3::dot(bottomLeft(), normal());
-        float t = ( D - Vec3::dot(ray.origin(), normal()))/Vec3::dot(ray.direction(), normal());
+        Vec3 p = bottomLeft() - ray.origin();
+        float t = ( Vec3::dot(p, normal()))/Vec3::dot(ray.direction(), normal());
         Vec3 point = ray.direction() * t + ray.origin();
-        Vec3 vecToBottom = point - bottomLeft();
-        Vec3 X_axis = (bottomRight() - bottomLeft());
-        Vec3 Y_axis = (upLeft() - bottomLeft());
-        float u = Vec3::dot(vecToBottom, X_axis);
-        float v = Vec3::dot(vecToBottom, Y_axis);
-        if(    u > 0 && u < Vec3::dot(X_axis, X_axis)
-            && v > 0 && v < Vec3::dot(Y_axis, Y_axis))
+        if(t>0 && isInSquare(point, normal()))
         {
             intersection.intersectionExists = true;
             intersection.t = t;
             intersection.intersection = point;
             intersection.normal = normal();
+            intersection.normal.normalize();
             return intersection;
         }
         else
