@@ -17,7 +17,7 @@
 // -------------------------------------------
 // Basic Mesh class
 // -------------------------------------------
-
+class Square;
 struct MeshVertex {
     inline MeshVertex () {}
     inline MeshVertex (const Vec3 & _p, const Vec3 & _n) : position (_p), normal (_n) , u(0) , v(0) {}
@@ -101,6 +101,7 @@ public:
     std::vector< float > normalsArray;
     std::vector< float > uvs_array;
     std::vector< unsigned int > triangles_array;
+    std::vector< Vec3 > boardingbox;
 
     Material material;
 
@@ -117,6 +118,7 @@ public:
         build_normals_array();
         build_UVs_array();
         build_triangles_array();
+        boardingbox = boardingBox();
     }
 
 
@@ -131,9 +133,9 @@ public:
             vertices[v].position = transform*vertices[v].position;
         }
 
-        //        recomputeNormals();
-        //        build_positions_array();
-        //        build_normals_array();
+        recomputeNormals();
+        build_positions_array();
+        build_normals_array();
     }
 
     void scale( Vec3 const & scale ){
@@ -195,18 +197,87 @@ public:
         glNormalPointer (GL_FLOAT, 3*sizeof (float), (GLvoid*)(normalsArray.data()));
         glVertexPointer (3, GL_FLOAT, 3*sizeof (float) , (GLvoid*)(positions_array.data()));
         glDrawElements(GL_TRIANGLES, triangles_array.size(), GL_UNSIGNED_INT, (GLvoid*)(triangles_array.data()));
+        
+        // glPointSize(20.);
+        // glBegin(GL_POINTS);
+        // std::vector<Vec3> boardingbox = boardingBox();
+        // for(size_t i = 0; i<boardingbox.size(); i++)
+        // {
+        //     glVertex3f( boardingbox[i][0] , boardingbox[i][1] , boardingbox[i][2] );
+        //     i+= boardingbox.size()-1;
+        // }
+        // glEnd();
+    }
 
+    std::vector<Vec3> boardingBox() const
+    {
+        Vec3 bbmin, bbmax;
+        bbmin = Vec3(positions_array[0], positions_array[1], positions_array[2]);
+        bbmax = Vec3(positions_array[0], positions_array[1], positions_array[2]);
+
+        for(size_t i = 3; i<positions_array.size(); i+=3)
+        {
+            for (int j = 0; j < 3; ++j)
+            {
+                if(bbmin[j] > positions_array[i+j]) bbmin[j] = positions_array[i+j];
+                if(bbmax[j] < positions_array[i+j]) bbmax[j] = positions_array[i+j];
+            }
+        }
+        bbmin -= Vec3(0.01, 0.01, 0.01);
+        bbmax += Vec3(0.01, 0.01, 0.01);
+
+        std::vector< Vec3 > boardingbox;
+
+        boardingbox.push_back(bbmin);
+        boardingbox.push_back(bbmax);
+
+        return boardingbox;
+    }
+
+    bool isInBoardingBox(Vec3 origin, Vec3 dir) const
+    {
+        float tmin, tmax, tYmin, tYmax, tZmin, tZmax;
+        tmin = (boardingbox[0][0] - origin[0])/dir[0]; // tXmin;
+        tmax = (boardingbox[boardingbox.size()-1][0] - origin[0])/dir[0]; // tXmax;
+        tYmin = (boardingbox[0][1] - origin[1])/dir[1]; 
+        tYmax = (boardingbox[boardingbox.size()-1][1] - origin[1])/dir[1]; 
+        tZmin = (boardingbox[0][2] - origin[2])/dir[2]; 
+        tZmax = (boardingbox[boardingbox.size()-1][2] - origin[2])/dir[2]; 
+
+        if(tmin > tmax) std::swap(tmin, tmax); // swap value if tmin is not min;
+        if(tYmin > tYmax) std::swap(tYmin, tYmax); //same
+        if(tZmin > tZmax) std::swap(tZmin, tZmax); //same
+        if(tmin > tYmax || tmax < tYmin) return false;
+        if(tmin < tYmin) tmin = tYmin;
+        if(tmax > tYmax) tmax = tYmax;
+        if(tmin > tZmax || tmax < tZmin) return false;
+        return true;
     }
 
     RayTriangleIntersection intersect( Ray const & ray ) const {
         RayTriangleIntersection closestIntersection;
         closestIntersection.t = FLT_MAX;
-        // Note :
-        // Creer un objet Triangle pour chaque face
-        // Vous constaterez des problemes de précision
-        // solution : ajouter un facteur d'échelle lors de la création du Triangle : float triangleScaling = 1.000001;
+
+        //check intersection with boarding box
+        if(!isInBoardingBox(ray.origin(), ray.direction())) return closestIntersection;
+
+        for (int i = 0; i < triangles.size(); ++i)
+        {
+            MeshTriangle meshTriangle = triangles[i];
+            Triangle triangle = Triangle(vertices[triangles[i][0]].position, 
+                                         vertices[triangles[i][1]].position, 
+                                         vertices[triangles[i][2]].position);
+            RayTriangleIntersection intersection = triangle.getIntersection(ray);
+            if(intersection.intersectionExists && intersection.t<closestIntersection.t && intersection.t> 0.001f)
+            {
+                closestIntersection = intersection;
+
+            }
+
+        }
         return closestIntersection;
     }
+
 };
 
 

@@ -5,7 +5,10 @@
 void Mesh::loadOFF (const std::string & filename) {
     std::ifstream in (filename.c_str ());
     if (!in)
+    {
+        std::cout<<"fichier introuvable "<<filename<<std::endl;
         exit (EXIT_FAILURE);
+    }
     std::string offString;
     unsigned int sizeV, sizeT, tmp;
     in >> offString >> sizeV >> sizeT >> tmp;

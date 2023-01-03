@@ -27,6 +27,8 @@
 #include "src/Camera.h"
 #include "src/Scene.h"
 #include <GL/glut.h>
+#include <chrono>
+
 
 #include "src/matrixUtilities.h"
 
@@ -171,13 +173,15 @@ void ray_trace_from_camera() {
     std::cout << "Ray tracing a " << w << " x " << h << " image" << std::endl;
     camera.apply();
     Vec3 pos , dir;
-    //    unsigned int nsamples = 100;
+    //unsigned int nsamples = 1;
     unsigned int nsamples = 50;
+    //unsigned int nsamples = 5;
     std::vector< Vec3 > image( w*h , Vec3(0,0,0) );
     // float u = 0.5; float v = 0.5;
     // screen_space_to_world_space_ray(u,v,pos,dir);
     // Vec3 color = scenes[selected_scene].rayTrace( Ray(pos , dir) );
     // image[w/2 + (h/2)*w] += color;
+    auto start = std::chrono::high_resolution_clock::now();
     for (int y=0; y<h; y++){
         for (int x=0; x<w; x++) {
             for( unsigned int s = 0 ; s < nsamples ; ++s ) {
@@ -191,7 +195,9 @@ void ray_trace_from_camera() {
             image[x + y*w] /= nsamples;
         }
     }
-    std::cout << "\tDone" << std::endl;
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>(end-start);
+    std::cout << "\tDone in "<< duration.count() <<"s" << std::endl;
 
     std::string filename = "./rendu.ppm";
     ofstream f(filename.c_str(), ios::binary);
@@ -324,11 +330,13 @@ int main (int argc, char ** argv) {
 
     camera.move(0., 0., -3.1);
     selected_scene=0;
-    scenes.resize(4);
+    scenes.resize(6);
     scenes[2].setup_single_sphere();
     scenes[1].setup_single_square();
-    scenes[0].setup_cornell_box();
+    scenes[5].setup_cornell_box();
     scenes[3].setup_two_spheres();
+    scenes[4].setup_single_mesh();
+    scenes[0].setup_base_cornell_box();
 
     glutMainLoop ();
     return EXIT_SUCCESS;
