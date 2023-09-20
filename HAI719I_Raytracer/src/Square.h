@@ -85,6 +85,8 @@ public:
         Vec3 p = bottomLeft() - ray.origin();
         float t = ( Vec3::dot(p, normal()))/Vec3::dot(ray.direction(), normal());
         Vec3 point = ray.direction() * t + ray.origin();
+        float width = (bottomRight() - bottomLeft()).length();
+        float height = (upLeft() - bottomLeft()).length();
         if(t>0 && isInSquare(point))
         {
             intersection.intersectionExists = true;
@@ -92,6 +94,16 @@ public:
             intersection.intersection = point;
             intersection.normal = normal();
             intersection.normal.normalize();
+            float u,v;
+            Vec3 X = bottomRight() - bottomLeft();
+            Vec3 Y = upLeft() - bottomLeft();
+            Vec3 p_bottom = point - bottomLeft();
+            Vec3 projP_X = (Vec3::dot(p_bottom, X)/X.squareLength())*X;
+            Vec3 projP_Y = (Vec3::dot(p_bottom, Y)/Y.squareLength())*Y;
+            u = projP_X.length()/X.length();
+            v = projP_Y.length()/Y.length();
+            intersection.u = u;
+            intersection.v = v;
             return intersection;
         }
         else

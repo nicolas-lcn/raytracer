@@ -25,6 +25,11 @@ public:
         m_c[2] = c2;
         updateAreaAndNormal();
     }
+
+    void print()
+    {
+        std::cout<<"c0 : "<<c0()<<" | c1 : "<<c1()<<" | c2 : "<<c2()<<std::endl;
+    }
     void updateAreaAndNormal() {
         Vec3 nNotNormalized = Vec3::cross( m_c[1] - m_c[0] , m_c[2] - m_c[0] );
         float norm = nNotNormalized.length();

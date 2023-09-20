@@ -105,6 +105,9 @@ public:
             Vec3 normal = point - m_center;
             normal.normalize();
             rayinter.normal = normal;
+            Vec3 spherical = EuclideanCoordinatesToSpherical(point-m_center);
+            rayinter.theta = 0.5 + spherical[0]/(2*M_PI);
+            rayinter.phi = 0.5 - spherical[1]/M_PI;
 
         }
         else{

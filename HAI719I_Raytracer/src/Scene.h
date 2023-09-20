@@ -61,7 +61,7 @@ class Scene {
 
 public:
 
-    bool displaySoftShadow = true;
+    bool displaySoftShadow = false;
 
     Scene() {
     }
@@ -205,6 +205,19 @@ public:
         return refractDir;
     }
 
+    Vec3 getTransparentDir(Vec3 point, Vec3 normal, Vec3 raydir, float index_medium)
+    {
+        float dot = Vec3::dot(raydir, normal);
+        float prod = (index_medium * index_medium) * (dot * dot);
+
+        // create new ray
+        Vec3 ray_inv_d;
+        ray_inv_d = (index_medium * raydir) + (index_medium * (dot + sqrt(prod)) * normal);
+        ray_inv_d.normalize();
+
+        return ray_inv_d;    
+    }
+
 
     Vec3 computePhongIllumination(
         Ray ray, 
@@ -305,7 +318,6 @@ public:
         {
             Vec3 normal = raySceneIntersection.raySphereIntersection.normal;
             Vec3 point = raySceneIntersection.raySphereIntersection.intersection;
-            float intersected = 0;
             for (int i = 0; i < lights.size(); ++i)
             {
                 if(spheres[raySceneIntersection.objectIndex].material.type == Material_Mirror)
@@ -323,6 +335,19 @@ public:
                         Ray refracted = Ray(point, refractDir);
                         color += rayTraceRecursive(refracted, NRemainingBounces - 1, 0.0001f);
                     }
+                }
+                else if (spheres[raySceneIntersection.objectIndex].material.type == Material_Transparent)
+                {
+                    Vec3 transDir = getTransparentDir(point, normal, ray.direction(), spheres[raySceneIntersection.objectIndex].material.index_medium);
+                    if(transDir.length()>0)
+                    {
+                        Ray transparentRay = Ray(point, transDir);
+                        color += rayTraceRecursive(transparentRay, NRemainingBounces - 1, 0.0001f);
+                    }
+                }
+                else if (spheres[raySceneIntersection.objectIndex].material.type == Material_Texture)
+                {
+                     color = spheres[raySceneIntersection.objectIndex].material.sampleTexture(raySceneIntersection.raySphereIntersection.theta, raySceneIntersection.raySphereIntersection.phi);
                 }
                 else
                 {
@@ -359,13 +384,25 @@ public:
         }
         else if(raySceneIntersection.typeOfIntersectedObject == ObjectType_Square)
         {
-            float intersected = 0;
             
             for (int i = 0; i < lights.size(); ++i)
             {
+                if(squares[raySceneIntersection.objectIndex].material.type == Material_Texture)
+                {
+                    color = squares[raySceneIntersection.objectIndex].material.sampleTexture(raySceneIntersection.raySquareIntersection.u, raySceneIntersection.raySquareIntersection.v);
+                }
+                else if(squares[raySceneIntersection.objectIndex].material.type == Material_Mirror)
+                {
+                    Vec3 normal = raySceneIntersection.raySquareIntersection.normal;
+                    Vec3 point = raySceneIntersection.raySquareIntersection.intersection;
+                    Vec3 reflectionDir = ray.direction() - (2 * normal * Vec3::dot(ray.direction(), normal));
+                    reflectionDir.normalize();
+                    Ray reflected = Ray(point, reflectionDir);
+                    color += rayTraceRecursive(reflected, NRemainingBounces - 1, 0.0001f);
+                }
                 if(displaySoftShadow)
                 {
-                    color = computePhongIllumination(ray, 
+                    color += computePhongIllumination(ray, 
                             lights[i], 
                             raySceneIntersection.raySquareIntersection.normal, 
                             raySceneIntersection.raySquareIntersection.intersection,
@@ -401,6 +438,7 @@ public:
                 color = meshes[raySceneIntersection.objectIndex].material.diffuse_material;
                 if(displaySoftShadow)
                 {
+
                     color = computePhongIllumination(ray, 
                             lights[i], 
                             raySceneIntersection.rayMeshIntersection.normal, 
@@ -465,7 +503,8 @@ public:
             s.m_center = Vec3(0. , 0. , 0.);
             s.m_radius = 1.f;
             s.build_arrays();
-            s.material.type = Material_Mirror;
+            s.material.type = Material_Texture;
+            s.material.loadTexture2DFromFilePath("./img/sphereTextures/s1.ppm");
             s.material.diffuse_material = Vec3( 1.,1.,1 );
             s.material.specular_material = Vec3( 0.2,0.2,0.2 );
             s.material.shininess = 20;
@@ -494,6 +533,8 @@ public:
             Square & s = squares[squares.size() - 1];
             s.setQuad(Vec3(-1., -1., 0.), Vec3(1., 0, 0.), Vec3(0., 1, 0.), 2., 2.);
             s.build_arrays();
+            s.material.type = Material_Texture;
+            s.material.loadTexture2DFromFilePath("./img/sphereTextures/s2.ppm");
             s.material.diffuse_material = Vec3( 0.8,0.8,0.8 );
             s.material.specular_material = Vec3( 0.8,0.8,0.8 );
             s.material.shininess = 20;
@@ -525,6 +566,7 @@ public:
             s.scale(Vec3(2., 2., 1.));
             s.translate(Vec3(0., 0., -2.));
             s.build_arrays();
+            s.material.type = Material_Mirror;
             s.material.diffuse_material = Vec3( 0.5,0.,0.7 );
             s.material.specular_material = Vec3( 1.,1.,1. );
             s.material.shininess = 16;
@@ -591,6 +633,7 @@ public:
             s.scale(Vec3(2., 2., 1.));
             s.rotate_y(180);
             s.build_arrays();
+            s.material.type = Material_Mirror;
             s.material.diffuse_material = Vec3( 1.0,1.0,1.0 );
             s.material.specular_material = Vec3( 1.0,1.0,1.0 );
             s.material.shininess = 16;
@@ -609,7 +652,7 @@ public:
             s.material.specular_material = Vec3( 1.,0.,0. );
             s.material.shininess = 16;
             s.material.transparency = 1.0;
-            s.material.index_medium = 1.0;
+            s.material.index_medium = 1.4;
         }
 
        
@@ -628,19 +671,19 @@ public:
             s.material.index_medium = 1.4;
         }
 
-        {
-            meshes.resize( meshes.size() + 1);
-            Mesh & mesh = meshes[meshes.size() - 1];
-            mesh.loadOFF("./data/suzanne.off");
-            mesh.centerAndScaleToUnit();
-            mesh.build_arrays();
-            // mesh.translate(Vec3(1.0, 0.3, 0.5));
-            // mesh.build_arrays();
-            mesh.material.type = Material_Diffuse_Blinn_Phong;
-            mesh.material.diffuse_material = Vec3(0.9,0.5,0.47);
-            mesh.material.specular_material = Vec3(0.9,0.5,0.47);
-            mesh.material.shininess = 20;
-        }
+        // {
+        //     meshes.resize( meshes.size() + 1);
+        //     Mesh & mesh = meshes[meshes.size() - 1];
+        //     mesh.loadOFF("./data/suzanne.off");
+        //     mesh.centerAndScaleToUnit();
+        //     mesh.build_arrays();
+        //     // mesh.translate(Vec3(1.0, 0.3, 0.5));
+        //     // mesh.build_arrays();
+        //     mesh.material.type = Material_Diffuse_Blinn_Phong;
+        //     mesh.material.diffuse_material = Vec3(0.9,0.5,0.47);
+        //     mesh.material.specular_material = Vec3(0.9,0.5,0.47);
+        //     mesh.material.shininess = 20;
+        // }
 
     }
 
@@ -709,6 +752,8 @@ public:
             s.scale(Vec3(2., 2., 1.));
             s.translate(Vec3(0., 0., -2.));
             s.build_arrays();
+            // s.material.type = Material_Texture;
+            // s.material.loadTexture2DFromFilePath("./img/sphereTextures/s2.ppm");
             s.material.diffuse_material = Vec3( 1.,1.,1. );
             s.material.specular_material = Vec3( 1.,1.,1. );
             s.material.shininess = 16;
@@ -788,7 +833,7 @@ public:
             s.m_center = Vec3(1.0, -1.25, 0.5);
             s.m_radius = 0.75f;
             s.build_arrays();
-            s.material.type = Material_Glass;
+            s.material.type = Material_Transparent;
             s.material.diffuse_material = Vec3( 1.,0.,0. );
             s.material.specular_material = Vec3( 1.,0.,0. );
             s.material.shininess = 16;
@@ -804,6 +849,8 @@ public:
             s.m_radius = 0.75f;
             s.build_arrays();
             s.material.type = Material_Mirror;
+            // s.material.type = Material_Texture;
+            // s.material.loadTexture2DFromFilePath("./img/sphereTextures/s1.ppm");
             s.material.diffuse_material = Vec3( 1.,1.,1. );
             s.material.specular_material = Vec3(  1.,1.,1. );
             s.material.shininess = 16;
@@ -838,6 +885,11 @@ public:
             mesh.material.diffuse_material = Vec3( 0.,1.,0.);
             mesh.material.specular_material = Vec3( 0.2,0.2,0.2 );
             mesh.material.shininess = 20;
+            // for (int i = 0; i < mesh.vertices.size(); i+=3)
+            // {
+            //     std::cout<<mesh.vertices[i].position<<" | "<<mesh.vertices[i+1].position<<" | "<<mesh.vertices[i+2].position<<std::endl;
+            // }
+            // mesh.tree->printTreeFrom(mesh.tree->root, 0);
         }
 
     }

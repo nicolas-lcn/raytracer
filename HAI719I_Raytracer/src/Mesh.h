@@ -4,20 +4,19 @@
 
 #include <vector>
 #include <string>
-#include "Vec3.h"
-#include "Ray.h"
+#include "KdTree.h"
 #include "Triangle.h"
 #include "Material.h"
 
-#include <GL/glut.h>
 
-#include <cfloat>
+
+
 
 
 // -------------------------------------------
 // Basic Mesh class
 // -------------------------------------------
-class Square;
+
 struct MeshVertex {
     inline MeshVertex () {}
     inline MeshVertex (const Vec3 & _p, const Vec3 & _n) : position (_p), normal (_n) , u(0) , v(0) {}
@@ -102,6 +101,7 @@ public:
     std::vector< float > uvs_array;
     std::vector< unsigned int > triangles_array;
     std::vector< Vec3 > boardingbox;
+    KdTree* tree;
 
     Material material;
 
@@ -119,6 +119,13 @@ public:
         build_UVs_array();
         build_triangles_array();
         boardingbox = boardingBox();
+        std::vector<Vec3> positions = std::vector<Vec3>(vertices.size());
+        for (int i = 0; i < vertices.size(); ++i)
+        {
+            positions[i] = vertices[i].position;
+        }
+        size_t nbTriangles = triangles.size();
+        tree = new KdTree(positions, triangles_array, nbTriangles);
     }
 
 
@@ -200,12 +207,15 @@ public:
         
         // glPointSize(20.);
         // glBegin(GL_POINTS);
-        // std::vector<Vec3> boardingbox = boardingBox();
-        // for(size_t i = 0; i<boardingbox.size(); i++)
-        // {
-        //     glVertex3f( boardingbox[i][0] , boardingbox[i][1] , boardingbox[i][2] );
-        //     i+= boardingbox.size()-1;
-        // }
+        // // std::vector<Vec3> boardingbox = boardingBox();
+        // // for(size_t i = 0; i<boardingbox.size(); i++)
+        // // {
+        // //     glVertex3f( boardingbox[i][0] , boardingbox[i][1] , boardingbox[i][2] );
+        // //     i+= boardingbox.size()-1;
+        // // }
+        // glColor3d(1,0,0);
+        // glVertex3f(tree->root->bbmin[0], tree->root->bbmin[1], tree->root->bbmin[2]);
+        // glVertex3f(tree->root->bbmax[0], tree->root->bbmax[1], tree->root->bbmax[2]);
         // glEnd();
     }
 
@@ -255,26 +265,125 @@ public:
     }
 
     RayTriangleIntersection intersect( Ray const & ray ) const {
+        // std::vector<Vec3> positions = std::vector<Vec3>(vertices.size());
+        // for (int i = 0; i < vertices.size(); ++i)
+        // {
+        //     positions[i] = vertices[i].position;
+        // }
+        // return tree->intersect(ray, positions, triangles_array);
         RayTriangleIntersection closestIntersection;
         closestIntersection.t = FLT_MAX;
-
-        //check intersection with boarding box
+        std::vector<int> indexes;
         if(!isInBoardingBox(ray.origin(), ray.direction())) return closestIntersection;
 
-        for (int i = 0; i < triangles.size(); ++i)
+        indexes = tree->intersectRecursive(ray, tree->root);
+        // std::cout<<"Size : "<<indexes.size()<<std::endl;
+            
+        for (int i : indexes)
         {
-            MeshTriangle meshTriangle = triangles[i];
-            Triangle triangle = Triangle(vertices[triangles[i][0]].position, 
-                                         vertices[triangles[i][1]].position, 
-                                         vertices[triangles[i][2]].position);
+            // printf("Intersected triangle no %d\n", i);
+            Triangle triangle = Triangle(vertices[triangles[i].v[0]].position, 
+                                         vertices[triangles[i].v[1]].position, 
+                                         vertices[triangles[i].v[2]].position);
+            
+
             RayTriangleIntersection intersection = triangle.getIntersection(ray);
-            if(intersection.intersectionExists && intersection.t<closestIntersection.t && intersection.t> 0.001f)
+            if(intersection.intersectionExists && intersection.t> 0.001f)
             {
-                closestIntersection = intersection;
+                // printf("Intersected triangle %d / %d\n", node_triangles[i], triangles.size());
+                //if(closestIntersection.t > intersection.t) 
+                //{
+                    closestIntersection = intersection;
+                    // printf("/////////////\n");
+                    // printf("Intersection Found with Triangle at t = %f\n", intersection.t);
+                    // i_s.push_back(i);
+                //}
+                    //triangle.print();
 
             }
 
         }
+        
+       
+        // RayTriangleIntersection closestIntersection1;
+        // closestIntersection1.t = FLT_MAX;
+        // std::vector<int> i_s0;
+        // std::vector<int> i_s;
+
+
+        // //check intersection with boarding box
+        // RayNodeIntersection nodeIntersection = tree->intersect(ray);
+        // if(nodeIntersection.intersectionExists)
+        // {
+        //     for (int i = nodeIntersection.intersected->begin; i < nodeIntersection.intersected->end; i++)
+        //     {
+
+        //         // printf("Creating triangle no %d\n", node_triangles[i]);
+        //         Triangle triangle = Triangle(vertices[triangles[i].v[0]].position, 
+        //                                      vertices[triangles[i].v[1]].position, 
+        //                                      vertices[triangles[i].v[2]].position);
+                
+
+        //         RayTriangleIntersection intersection = triangle.getIntersection(ray);
+        //         if(intersection.intersectionExists && intersection.t> 0.001f)
+        //         {
+        //             // printf("Intersected triangle %d / %d\n", node_triangles[i], triangles.size());
+        //             //if(closestIntersection.t > intersection.t) 
+        //             //{
+        //                 closestIntersection = intersection;
+        //                 // printf("/////////////\n");
+        //                 // printf("Intersection Found with Triangle at t = %f\n", intersection.t);
+        //                 i_s.push_back(i);
+        //             //}
+        //                 triangle.print();
+
+        //         }
+
+        //     }
+        //     printf("////////////////////////\n");
+            // for (int i = 0; i < triangles.size(); i++)
+            // {
+            //     Triangle triangle = Triangle(vertices[triangles[i].v[0]].position, 
+            //                                      vertices[triangles[i].v[1]].position, 
+            //                                      vertices[triangles[i].v[2]].position);
+            //     RayTriangleIntersection intersection = triangle.getIntersection(ray);
+            //     if(intersection.intersectionExists && intersection.t<closestIntersection1.t && intersection.t> 0.001f)
+            //     {
+            //         // std::cout<<vertices[triangles_array[i]].position<<"\n"<<vertices[triangles_array[i+1]].position<<"\n"<<vertices[triangles_array[i+2]].position<<std::endl;
+            //         // printf("/////////////\n");
+            //         closestIntersection1 = intersection;
+            //         i_s0.push_back(i);
+
+            //     }
+            // }
+            // if(i_s.size() != i_s0.size()) 
+            // {
+            //     printf("nb triangle intersected : %ld kdtree, %ld classic\n", i_s.size(), i_s0.size());
+            //     printf("Intersections : %f and %f\n", closestIntersection.t, closestIntersection1.t);
+            // }
+
+        // }
+        // else
+        // {
+        //     return closestIntersection;
+        // }
+
+        // for (int i = 0; i < triangles_array.size(); i+=3)
+        // {
+        //     Triangle triangle = Triangle(vertices[triangles_array[i]].position, 
+        //                                      vertices[triangles_array[i+1]].position, 
+        //                                      vertices[triangles_array[i+2]].position);
+        //     RayTriangleIntersection intersection = triangle.getIntersection(ray);
+        //     if(intersection.intersectionExists && intersection.t<closestIntersection.t && intersection.t> 0.001f)
+        //     {
+        //         std::cout<<vertices[triangles_array[i]].position<<"\n"<<vertices[triangles_array[i+1]].position<<"\n"<<vertices[triangles_array[i+2]].position<<std::endl;
+        //         printf("/////////////\n");
+        //         closestIntersection = intersection;
+
+        //     }
+        // }
+
+        // return closestIntersection;
         return closestIntersection;
     }
 
